@@ -1,0 +1,380 @@
+package ftp_service::ftp_serviceImpl;
+use strict;
+use Bio::KBase::Exceptions;
+# Use Semantic Versioning (2.0.0-rc.1)
+# http://semver.org
+our $VERSION = '0.0.1';
+our $GIT_URL = '';
+our $GIT_COMMIT_HASH = '';
+
+=head1 NAME
+
+ftp_service
+
+=head1 DESCRIPTION
+
+A KBase module: ftp_service
+This module serve as a service that lists files and file info in users private ftp space
+
+=cut
+
+#BEGIN_HEADER
+use Bio::KBase::AuthToken;
+use Bio::KBase::workspace::Client;
+use Config::IniFiles;
+use Data::Dumper;
+use POSIX;
+use FindBin qw($Bin);
+use JSON;
+use LWP::UserAgent;
+use Try::Tiny;
+use XML::Simple;
+
+
+
+sub nodejs_request
+{
+
+	my ($method, $url) = @_;
+	# create a HTTP request
+	#try {
+		print "$url\n\n";
+      my $ua = LWP::UserAgent->new();
+    	my $request = HTTP::Request->new();
+    	$request->method($method);
+    	$request->uri($url);
+
+    	my $response = $ua->request($request);
+    	my $sn = $response->content();
+    	my $code = $response->code();
+      my $jsonf = JSON::from_json($sn);
+      print &Dumper ($jsonf);
+			die;
+      return $jsonf;
+    #}catch {
+    # Print out the exception that occurred
+    #warn "SOLR request return code 403, caught error: $_";
+    #die;
+    #}
+
+}
+
+sub curl_nodejs {
+    my ($file_link, $ctx) = @_;
+    my $token = $ctx->{token};
+		#print "$token\n\n";
+		#die;
+    my $cmd   = 'curl --connect-timeout 100 -s';
+    $cmd     .= " -H 'Authorization: $token' $file_link";
+		my $out   = `echo  | $cmd` or die "Connection timeout retreving list:\n";
+    my $json  = decode_json($out);
+
+		#print &Dumper ($json);
+		#die;
+		#$json->{status} == 200 or die "Error uploading file: $file\n".$json->{status}." ".$json->{error}->[0]."\n";
+    return $json;
+}
+#END_HEADER
+
+sub new
+{
+    my($class, @args) = @_;
+    my $self = {
+    };
+    bless $self, $class;
+    #BEGIN_CONSTRUCTOR
+
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $cfg = Config::IniFiles->new(-file=>$config_file);
+    my $wsInstance = $cfg->val('ftp_service','workspace-url');
+    die "no workspace-url defined" unless $wsInstance;
+
+    $self->{'workspace-url'} = $wsInstance;
+
+    #END_CONSTRUCTOR
+
+    if ($self->can('_init_instance'))
+    {
+	$self->_init_instance();
+    }
+    return $self;
+}
+
+=head1 METHODS
+
+
+
+=head2 list_files
+
+  $output = $obj->list_files($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a ftp_service.listFilesInputParams
+$output is a ftp_service.listFilesOutputPparams
+listFilesInputParams is a reference to a hash where the following keys are defined:
+	token has a value which is a string
+	type has a value which is a string
+	username has a value which is a string
+listFilesOutputPparams is a reference to a hash where the following keys are defined:
+	files has a value which is a reference to a list where each element is a ftp_service.fileInfo
+	username has a value which is a string
+fileInfo is a reference to a hash where the following keys are defined:
+	file_link has a value which is a string
+	file_name has a value which is a string
+	file_size has a value which is a float
+	file_type has a value which is a string
+	isFolder has a value which is a string
+	date has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a ftp_service.listFilesInputParams
+$output is a ftp_service.listFilesOutputPparams
+listFilesInputParams is a reference to a hash where the following keys are defined:
+	token has a value which is a string
+	type has a value which is a string
+	username has a value which is a string
+listFilesOutputPparams is a reference to a hash where the following keys are defined:
+	files has a value which is a reference to a list where each element is a ftp_service.fileInfo
+	username has a value which is a string
+fileInfo is a reference to a hash where the following keys are defined:
+	file_link has a value which is a string
+	file_name has a value which is a string
+	file_size has a value which is a float
+	file_type has a value which is a string
+	isFolder has a value which is a string
+	date has a value which is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub list_files
+{
+    my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to list_files:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'list_files');
+    }
+
+    my $ctx = $ftp_service::ftp_serviceServer::CallContext;
+    my($output);
+    #BEGIN list_files
+    print &Dumper ($params);
+
+    my $token=$ctx->token;
+    my $url = "curl -H 'Authorization: $token' https://ci.kbase.us/services/kb-ftp-api/v0/list/janakakbase/";
+    my $method = 'https://ci.kbase.us/services/kb-ftp-api/v0/list/janakakbase/';
+
+
+    my $response = curl_nodejs($method, $ctx);
+		my $file_list = [];
+		for (my $i=0; $i<@{$response}; $i++){
+			my $folder = $response->[$i]->{isFolder};
+			print "$folder\n";
+
+			my $each_file = {
+				file_link => $response->[$i]->{path},
+				file_name => $response->[$i]->{name},
+				file_size => $response->[$i]->{size},
+				isFolder => $folder
+			};
+			push ($file_list, $each_file);
+		}
+
+		$output = {
+			files => $file_list,
+			username => $ctx->{user_id}
+		};
+		print &Dumper ($output);
+    return $output;
+    #END list_files
+    my @_bad_returns;
+    (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to list_files:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'list_files');
+    }
+    return($output);
+}
+
+
+
+
+=head2 status
+
+  $return = $obj->status()
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$return is a string
+</pre>
+
+=end html
+
+=begin text
+
+$return is a string
+
+=end text
+
+=item Description
+
+Return the module status. This is a structure including Semantic Versioning number, state and git info.
+
+=back
+
+=cut
+
+sub status {
+    my($return);
+    #BEGIN_STATUS
+    $return = {"state" => "OK", "message" => "", "version" => $VERSION,
+               "git_url" => $GIT_URL, "git_commit_hash" => $GIT_COMMIT_HASH};
+    #END_STATUS
+    return($return);
+}
+
+=head1 TYPES
+
+
+
+=head2 listFilesInputParams
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+token has a value which is a string
+type has a value which is a string
+username has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+token has a value which is a string
+type has a value which is a string
+username has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 fileInfo
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+file_link has a value which is a string
+file_name has a value which is a string
+file_size has a value which is a float
+file_type has a value which is a string
+isFolder has a value which is a string
+date has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+file_link has a value which is a string
+file_name has a value which is a string
+file_size has a value which is a float
+file_type has a value which is a string
+isFolder has a value which is a string
+date has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 listFilesOutputPparams
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+files has a value which is a reference to a list where each element is a ftp_service.fileInfo
+username has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+files has a value which is a reference to a list where each element is a ftp_service.fileInfo
+username has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=cut
+
+1;
