@@ -32,40 +32,13 @@ use XML::Simple;
 
 
 
-sub nodejs_request
-{
-
-	my ($method, $url) = @_;
-	# create a HTTP request
-	#try {
-		print "$url\n\n";
-      my $ua = LWP::UserAgent->new();
-    	my $request = HTTP::Request->new();
-    	$request->method($method);
-    	$request->uri($url);
-
-    	my $response = $ua->request($request);
-    	my $sn = $response->content();
-    	my $code = $response->code();
-      my $jsonf = JSON::from_json($sn);
-      print &Dumper ($jsonf);
-			die;
-      return $jsonf;
-    #}catch {
-    # Print out the exception that occurred
-    #warn "SOLR request return code 403, caught error: $_";
-    #die;
-    #}
-
-}
-
 sub curl_nodejs {
-    my ($file_link, $ctx) = @_;
-    my $token = $ctx->{token};
+    my ($file_link, $user_token) = @_;
     my $cmd   = 'curl --connect-timeout 100 -s';
-    $cmd     .= " -H 'Authorization: $token' $file_link";
+    $cmd     .= " -H 'Authorization: $user_token' $file_link";
 		my $out   = `echo  | $cmd` or die "Connection timeout retreving file list:\n";
-    my $json  = decode_json($out);
+		my $json  = decode_json($out);
+		#$json->{status} == 200 or die "Error retreving file list: \n".$json->{status}." ".$json->{error}->[0]."\n";
     return $json;
 }
 #END_HEADER
@@ -178,10 +151,17 @@ sub list_files
     my $ctx = $ftp_service::ftp_serviceServer::CallContext;
     my($output);
     #BEGIN list_files
-    my $token=$ctx->token;
-    my $url = "curl -H 'Authorization: $token' https://ci.kbase.us/services/kb-ftp-api/v0/list/janakakbase/";
-    my $ftp_url = 'https://ci.kbase.us/services/kb-ftp-api/v0/list/'.$ctx->{user_id}.'/';
-		my $response = curl_nodejs($ftp_url, $ctx);
+		my ($token, $user_name);
+		if (defined $params->{token} && defined $params->{username}){
+			$token=$params->{token};
+			$user_name = $params->{username};
+		}
+		else{
+			die "KBase username or token is not identified\n";
+		}
+
+    my $ftp_url = 'https://ci.kbase.us/services/kb-ftp-api/v0/list/'.$user_name.'/';
+		my $response = curl_nodejs($ftp_url, $token);
 		my $file_list = [];
 		for (my $i=0; $i<@{$response}; $i++){
 			my $each_file = {
@@ -195,9 +175,8 @@ sub list_files
 
 		$output = {
 			files => $file_list,
-			username => $ctx->{user_id}
+			username => $user_name
 		};
-		#print &Dumper ($output);
 		return $output;
     #END list_files
     my @_bad_returns;
