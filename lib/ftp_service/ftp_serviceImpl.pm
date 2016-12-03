@@ -34,12 +34,13 @@ use XML::Simple;
 
 sub curl_nodejs {
     my ($file_link, $user_token) = @_;
-    my $cmd   = 'curl --connect-timeout 100 -s';
+    my $cmd   = 'curl --connect-timeout 100 -si';
     $cmd     .= " -H 'Authorization: $user_token' $file_link";
-		my $out   = `echo  | $cmd` or die "Connection timeout retreving file list:\n";
-		my $json  = decode_json($out);
-		#$json->{status} == 200 or die "Error retreving file list: \n".$json->{status}." ".$json->{error}->[0]."\n";
-    return $json;
+		my ($head,$body)  = split( m{\r?\n\r?\n}, `$cmd`) or die "Connection timed out retreving file list:\n";
+		my ($code) = $head =~m{\A\S+ (\d+)};
+		$code == 200 or die "Error retreving data from nodejs service: Return code $code \n".$body."\n";
+		my $json  = decode_json($body);
+		return $json;
 }
 #END_HEADER
 
@@ -177,6 +178,7 @@ sub list_files
 			files => $file_list,
 			username => $user_name
 		};
+
 		return $output;
     #END list_files
     my @_bad_returns;
