@@ -4,8 +4,8 @@ use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org
 our $VERSION = '0.0.1';
-our $GIT_URL = '';
-our $GIT_COMMIT_HASH = '';
+our $GIT_URL = 'https://github.com/kbaseapps/ftp_service.git';
+our $GIT_COMMIT_HASH = '49eb738e43cff477aad480efecb8324453be52e3';
 
 =head1 NAME
 
@@ -29,6 +29,9 @@ use JSON;
 use LWP::UserAgent;
 use Try::Tiny;
 use XML::Simple;
+use List::Util qw<first>;
+use Cache::FileCache;
+use Cache::MemoryCache;
 
 
 
@@ -41,6 +44,29 @@ sub curl_nodejs {
 		$code == 200 or die "Error retreving data from nodejs service: Return code $code \n".$body."\n";
 		my $json  = decode_json($body);
 		return $json;
+}
+
+sub search_files {
+	my ($response, $search_string) = @_;
+	my %search_hash;
+	for (my $i=0; $i<@{$response}; $i++){
+		my $file_name = lc($response->[$i]->{name});
+		my $each_file = {
+			file_link => $response->[$i]->{path},
+			file_name => $response->[$i]->{name},
+			file_size => $response->[$i]->{size},
+			isFolder => encode_json($response->[$i]->{isFolder})
+		};
+		$search_hash{$file_name} = $each_file;
+	}
+	my $st = lc ($search_string);
+	my $regex = qr/$st*/;
+	my @keys = grep { /$regex/ } keys %search_hash;
+	my $file_list = [];
+	foreach my $k (@keys){
+		push ($file_list, $search_hash{$k});
+	};
+	return $file_list;
 }
 #END_HEADER
 
@@ -88,6 +114,7 @@ $output is a ftp_service.listFilesOutputPparams
 listFilesInputParams is a reference to a hash where the following keys are defined:
 	token has a value which is a string
 	type has a value which is a string
+	search_word has a value which is a string
 	username has a value which is a string
 listFilesOutputPparams is a reference to a hash where the following keys are defined:
 	files has a value which is a reference to a list where each element is a ftp_service.fileInfo
@@ -111,6 +138,7 @@ $output is a ftp_service.listFilesOutputPparams
 listFilesInputParams is a reference to a hash where the following keys are defined:
 	token has a value which is a string
 	type has a value which is a string
+	search_word has a value which is a string
 	username has a value which is a string
 listFilesOutputPparams is a reference to a hash where the following keys are defined:
 	files has a value which is a reference to a list where each element is a ftp_service.fileInfo
@@ -162,23 +190,27 @@ sub list_files
 		}
 
     my $ftp_url = 'https://ci.kbase.us/services/kb-ftp-api/v0/list/'.$user_name.'/';
-		my $response = curl_nodejs($ftp_url, $token);
-		my $file_list = [];
-		for (my $i=0; $i<@{$response}; $i++){
-			my $each_file = {
-				file_link => $response->[$i]->{path},
-				file_name => $response->[$i]->{name},
-				file_size => $response->[$i]->{size},
-				isFolder => encode_json($response->[$i]->{isFolder})
+
+		my $cache = Cache::MemoryCache->new( { 'namespace' => 'temp',
+                                        'default_expires_in' => 30 } );
+		my $response = $cache->get('temp');
+  	if ( !defined $response ){
+			$cache->clear();
+			$response = curl_nodejs($ftp_url, $token);
+    	$cache->set( 'temp', $response );
+  	}
+		if ($params->{search_word}){
+			my $file_list = search_files ($response, $params->{search_word});
+			$output = {
+				files => $file_list,
+				username => $user_name
 			};
-			push ($file_list, $each_file);
+	  }
+		else{
+			die "search word not defined !\n\n";
 		}
 
-		$output = {
-			files => $file_list,
-			username => $user_name
-		};
-
+		#print &Dumper ($output);
 		return $output;
     #END list_files
     my @_bad_returns;
@@ -251,6 +283,7 @@ sub status {
 a reference to a hash where the following keys are defined:
 token has a value which is a string
 type has a value which is a string
+search_word has a value which is a string
 username has a value which is a string
 
 </pre>
@@ -262,6 +295,7 @@ username has a value which is a string
 a reference to a hash where the following keys are defined:
 token has a value which is a string
 type has a value which is a string
+search_word has a value which is a string
 username has a value which is a string
 
 

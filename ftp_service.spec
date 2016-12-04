@@ -8,6 +8,7 @@ module ftp_service {
     typedef structure {
         string token;
         string type;
+        string search_word;
         string username;
     } listFilesInputParams;
 
