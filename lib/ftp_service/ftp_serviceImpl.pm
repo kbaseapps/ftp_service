@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org
 our $VERSION = '0.0.1';
 our $GIT_URL = 'https://github.com/kbaseapps/ftp_service.git';
-our $GIT_COMMIT_HASH = '49eb738e43cff477aad480efecb8324453be52e3';
+our $GIT_COMMIT_HASH = '5d3d5cab4a4e1a863a635a9ddb9d645e6ba3e094';
 
 =head1 NAME
 
@@ -68,6 +68,25 @@ sub search_files {
 	};
 	return $file_list;
 }
+
+sub return_file_list {
+	my ($response) = @_;
+	my $file_path_list = [];
+	for (my $i=0; $i<@{$response}; $i++){
+		my $file_name = lc($response->[$i]->{name});
+		my $each_file = {
+			file_link => $response->[$i]->{path},
+			file_name => $response->[$i]->{name},
+			file_size => $response->[$i]->{size},
+			isFolder => encode_json($response->[$i]->{isFolder})
+		};
+    if (encode_json($response->[$i]->{isFolder}) eq 'false'){
+		 push ($file_path_list, $response->[$i]->{name});
+    }
+	}
+  return $file_path_list;
+}
+
 #END_HEADER
 
 sub new
@@ -98,9 +117,9 @@ sub new
 
 
 
-=head2 list_files
+=head2 search_list_files
 
-  $output = $obj->list_files($params)
+  $output = $obj->search_list_files($params)
 
 =over 4
 
@@ -110,13 +129,13 @@ sub new
 
 <pre>
 $params is a ftp_service.listFilesInputParams
-$output is a ftp_service.listFilesOutputPparams
+$output is a ftp_service.searchListFilesOutputPparams
 listFilesInputParams is a reference to a hash where the following keys are defined:
 	token has a value which is a string
 	type has a value which is a string
 	search_word has a value which is a string
 	username has a value which is a string
-listFilesOutputPparams is a reference to a hash where the following keys are defined:
+searchListFilesOutputPparams is a reference to a hash where the following keys are defined:
 	files has a value which is a reference to a list where each element is a ftp_service.fileInfo
 	username has a value which is a string
 fileInfo is a reference to a hash where the following keys are defined:
@@ -134,13 +153,13 @@ fileInfo is a reference to a hash where the following keys are defined:
 =begin text
 
 $params is a ftp_service.listFilesInputParams
-$output is a ftp_service.listFilesOutputPparams
+$output is a ftp_service.searchListFilesOutputPparams
 listFilesInputParams is a reference to a hash where the following keys are defined:
 	token has a value which is a string
 	type has a value which is a string
 	search_word has a value which is a string
 	username has a value which is a string
-listFilesOutputPparams is a reference to a hash where the following keys are defined:
+searchListFilesOutputPparams is a reference to a hash where the following keys are defined:
 	files has a value which is a reference to a list where each element is a ftp_service.fileInfo
 	username has a value which is a string
 fileInfo is a reference to a hash where the following keys are defined:
@@ -164,7 +183,7 @@ fileInfo is a reference to a hash where the following keys are defined:
 
 =cut
 
-sub list_files
+sub search_list_files
 {
     my $self = shift;
     my($params) = @_;
@@ -172,15 +191,15 @@ sub list_files
     my @_bad_arguments;
     (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
     if (@_bad_arguments) {
-	my $msg = "Invalid arguments passed to list_files:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	my $msg = "Invalid arguments passed to search_list_files:\n" . join("", map { "\t$_\n" } @_bad_arguments);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-							       method_name => 'list_files');
+							       method_name => 'search_list_files');
     }
 
     my $ctx = $ftp_service::ftp_serviceServer::CallContext;
     my($output);
-    #BEGIN list_files
-		my ($token, $user_name);
+    #BEGIN search_list_files
+    my ($token, $user_name);
 		if (defined $params->{token} && defined $params->{username}){
 			$token=$params->{token};
 			$user_name = $params->{username};
@@ -210,17 +229,79 @@ sub list_files
 			die "search word not defined !\n\n";
 		}
 
-		#print &Dumper ($output);
+		print &Dumper ($output);
 		return $output;
-    #END list_files
+    #END search_list_files
     my @_bad_returns;
     (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to search_list_files:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'search_list_files');
+    }
+    return($output);
+}
+
+
+
+
+=head2 list_files
+
+  $return = $obj->list_files()
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$return is a ftp_service.filepathList
+filepathList is a reference to a list where each element is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$return is a ftp_service.filepathList
+filepathList is a reference to a list where each element is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub list_files
+{
+    my $self = shift;
+
+    my $ctx = $ftp_service::ftp_serviceServer::CallContext;
+    my($return);
+    #BEGIN list_files
+    my $ftp_url = 'https://ci.kbase.us/services/kb-ftp-api/v0/list/'.$ctx->{user_id}.'/';
+		my $response = curl_nodejs($ftp_url, $ctx->{token});
+    my $data = return_file_list ($response);
+    #print &Dumper ($data);
+    return $data;
+    #END list_files
+    my @_bad_returns;
+    (ref($return) eq 'ARRAY') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
     if (@_bad_returns) {
 	my $msg = "Invalid returns passed to list_files:\n" . join("", map { "\t$_\n" } @_bad_returns);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
 							       method_name => 'list_files');
     }
-    return($output);
+    return($return);
 }
 
 
@@ -345,7 +426,7 @@ date has a value which is a string
 
 
 
-=head2 listFilesOutputPparams
+=head2 searchListFilesOutputPparams
 
 =over 4
 
@@ -370,6 +451,32 @@ a reference to a hash where the following keys are defined:
 files has a value which is a reference to a list where each element is a ftp_service.fileInfo
 username has a value which is a string
 
+
+=end text
+
+=back
+
+
+
+=head2 filepathList
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a list where each element is a string
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a list where each element is a string
 
 =end text
 

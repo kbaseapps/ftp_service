@@ -24,7 +24,12 @@ module ftp_service {
     typedef structure {
         list <fileInfo> files;
         string username;
-    } listFilesOutputPparams;
+    } searchListFilesOutputPparams;
 
-    funcdef list_files(listFilesInputParams params) returns (listFilesOutputPparams output) authentication required;
+    funcdef search_list_files(listFilesInputParams params) returns (searchListFilesOutputPparams output) authentication required;
+
+
+        typedef list <string> filepathList;
+
+    funcdef list_files () returns (filepathList) authentication required;
 };
