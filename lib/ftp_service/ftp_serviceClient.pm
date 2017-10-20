@@ -82,20 +82,19 @@ sub new
     # We create an auth token, passing through the arguments that we were (hopefully) given.
 
     {
-	my $token = Bio::KBase::AuthToken->new(@args);
-	
-	if (!$token->error_message)
-	{
-	    $self->{token} = $token->token;
-	    $self->{client}->{token} = $token->token;
+	my %arg_hash2 = @args;
+	if (exists $arg_hash2{"token"}) {
+	    $self->{token} = $arg_hash2{"token"};
+	} elsif (exists $arg_hash2{"user_id"}) {
+	    my $token = Bio::KBase::AuthToken->new(@args);
+	    if (!$token->error_message) {
+	        $self->{token} = $token->token;
+	    }
 	}
-        else
-        {
-	    #
-	    # All methods in this module require authentication. In this case, if we
-	    # don't have a token, we can't continue.
-	    #
-	    die "Authentication failed: " . $token->error_message;
+	
+	if (exists $self->{token})
+	{
+	    $self->{client}->{token} = $self->{token};
 	}
     }
 
@@ -110,9 +109,9 @@ sub new
 
 
 
-=head2 list_files
+=head2 search_list_files
 
-  $output = $obj->list_files($params)
+  $output = $obj->search_list_files($params)
 
 =over 4
 
@@ -122,12 +121,13 @@ sub new
 
 <pre>
 $params is a ftp_service.listFilesInputParams
-$output is a ftp_service.listFilesOutputPparams
+$output is a ftp_service.searchListFilesOutputPparams
 listFilesInputParams is a reference to a hash where the following keys are defined:
 	token has a value which is a string
 	type has a value which is a string
+	search_word has a value which is a string
 	username has a value which is a string
-listFilesOutputPparams is a reference to a hash where the following keys are defined:
+searchListFilesOutputPparams is a reference to a hash where the following keys are defined:
 	files has a value which is a reference to a list where each element is a ftp_service.fileInfo
 	username has a value which is a string
 fileInfo is a reference to a hash where the following keys are defined:
@@ -145,12 +145,13 @@ fileInfo is a reference to a hash where the following keys are defined:
 =begin text
 
 $params is a ftp_service.listFilesInputParams
-$output is a ftp_service.listFilesOutputPparams
+$output is a ftp_service.searchListFilesOutputPparams
 listFilesInputParams is a reference to a hash where the following keys are defined:
 	token has a value which is a string
 	type has a value which is a string
+	search_word has a value which is a string
 	username has a value which is a string
-listFilesOutputPparams is a reference to a hash where the following keys are defined:
+searchListFilesOutputPparams is a reference to a hash where the following keys are defined:
 	files has a value which is a reference to a list where each element is a ftp_service.fileInfo
 	username has a value which is a string
 fileInfo is a reference to a hash where the following keys are defined:
@@ -160,6 +161,100 @@ fileInfo is a reference to a hash where the following keys are defined:
 	file_type has a value which is a string
 	isFolder has a value which is a string
 	date has a value which is a string
+
+
+=end text
+
+=item Description
+
+
+
+=back
+
+=cut
+
+ sub search_list_files
+{
+    my($self, @args) = @_;
+
+# Authentication: required
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function search_list_files (received $n, expecting 1)");
+    }
+    {
+	my($params) = @args;
+
+	my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+	    my $msg = "Invalid arguments passed to search_list_files:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'search_list_files');
+	}
+    }
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "ftp_service.search_list_files",
+	    params => \@args,
+    });
+    if ($result) {
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'search_list_files',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method search_list_files",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'search_list_files',
+				       );
+    }
+}
+ 
+
+
+=head2 list_files
+
+  $return = $obj->list_files($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a ftp_service.listFilesInputParams
+$return is a ftp_service.filepathList
+listFilesInputParams is a reference to a hash where the following keys are defined:
+	token has a value which is a string
+	type has a value which is a string
+	search_word has a value which is a string
+	username has a value which is a string
+filepathList is a reference to a list where each element is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a ftp_service.listFilesInputParams
+$return is a ftp_service.filepathList
+listFilesInputParams is a reference to a hash where the following keys are defined:
+	token has a value which is a string
+	type has a value which is a string
+	search_word has a value which is a string
+	username has a value which is a string
+filepathList is a reference to a list where each element is a string
 
 
 =end text
@@ -321,6 +416,7 @@ sub _validate_version {
 a reference to a hash where the following keys are defined:
 token has a value which is a string
 type has a value which is a string
+search_word has a value which is a string
 username has a value which is a string
 
 </pre>
@@ -332,6 +428,7 @@ username has a value which is a string
 a reference to a hash where the following keys are defined:
 token has a value which is a string
 type has a value which is a string
+search_word has a value which is a string
 username has a value which is a string
 
 
@@ -381,7 +478,7 @@ date has a value which is a string
 
 
 
-=head2 listFilesOutputPparams
+=head2 searchListFilesOutputPparams
 
 =over 4
 
@@ -406,6 +503,32 @@ a reference to a hash where the following keys are defined:
 files has a value which is a reference to a list where each element is a ftp_service.fileInfo
 username has a value which is a string
 
+
+=end text
+
+=back
+
+
+
+=head2 filepathList
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a list where each element is a string
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a list where each element is a string
 
 =end text
 

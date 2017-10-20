@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0';
 our $GIT_URL = 'https://github.com/kbaseapps/ftp_service.git';
-our $GIT_COMMIT_HASH = '5d3d5cab4a4e1a863a635a9ddb9d645e6ba3e094';
+our $GIT_COMMIT_HASH = '1de22f6a253549a9c1ed982be4c5a91a104f9888';
 
 =head1 NAME
 
@@ -20,7 +20,7 @@ This module serve as a service that lists files and file info in users private f
 
 #BEGIN_HEADER
 use Bio::KBase::AuthToken;
-use Bio::KBase::workspace::Client;
+use Workspace::WorkspaceClient;
 use Config::IniFiles;
 use Data::Dumper;
 use POSIX;
@@ -216,7 +216,7 @@ sub search_list_files
   	if ( !defined $response ){
 			$cache->clear();
 			$response = curl_nodejs($ftp_url, $token);
-    	$cache->set( 'temp', $response );
+    		$cache->set( 'temp', $response );
   	}
 		if ($params->{search_word}){
 			my $file_list = search_files ($response, $params->{search_word});
@@ -247,7 +247,7 @@ sub search_list_files
 
 =head2 list_files
 
-  $return = $obj->list_files()
+  $return = $obj->list_files($params)
 
 =over 4
 
@@ -256,7 +256,13 @@ sub search_list_files
 =begin html
 
 <pre>
+$params is a ftp_service.listFilesInputParams
 $return is a ftp_service.filepathList
+listFilesInputParams is a reference to a hash where the following keys are defined:
+	token has a value which is a string
+	type has a value which is a string
+	search_word has a value which is a string
+	username has a value which is a string
 filepathList is a reference to a list where each element is a string
 
 </pre>
@@ -265,7 +271,13 @@ filepathList is a reference to a list where each element is a string
 
 =begin text
 
+$params is a ftp_service.listFilesInputParams
 $return is a ftp_service.filepathList
+listFilesInputParams is a reference to a hash where the following keys are defined:
+	token has a value which is a string
+	type has a value which is a string
+	search_word has a value which is a string
+	username has a value which is a string
 filepathList is a reference to a list where each element is a string
 
 
@@ -284,12 +296,23 @@ filepathList is a reference to a list where each element is a string
 sub list_files
 {
     my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to list_files:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'list_files');
+    }
 
     my $ctx = $ftp_service::ftp_serviceServer::CallContext;
     my($return);
     #BEGIN list_files
-    my $ftp_url = 'https://ci.kbase.us/services/kb-ftp-api/v0/list/'.$ctx->{user_id}.'/';
-		my $response = curl_nodejs($ftp_url, $ctx->{token});
+    my $ftp_url = 'https://ci.kbase.us/services/kb-ftp-api/v0/list/'.$params->{username}.'/';
+    print "$ftp_url\n";
+
+	my $response = curl_nodejs($ftp_url, $ctx->{token});
     my $data = return_file_list ($response);
     #print &Dumper ($data);
     return $data;

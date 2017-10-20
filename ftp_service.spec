@@ -31,5 +31,5 @@ module ftp_service {
 
         typedef list <string> filepathList;
 
-    funcdef list_files () returns (filepathList) authentication required;
+    funcdef list_files (listFilesInputParams params) returns (filepathList) authentication required;
 };

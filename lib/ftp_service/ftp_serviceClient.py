@@ -33,17 +33,28 @@ class ftp_service(object):
             trust_all_ssl_certificates=trust_all_ssl_certificates,
             auth_svc=auth_svc)
 
+    def search_list_files(self, params, context=None):
+        """
+        :param params: instance of type "listFilesInputParams" -> structure:
+           parameter "token" of String, parameter "type" of String, parameter
+           "search_word" of String, parameter "username" of String
+        :returns: instance of type "searchListFilesOutputPparams" ->
+           structure: parameter "files" of list of type "fileInfo" ->
+           structure: parameter "file_link" of String, parameter "file_name"
+           of String, parameter "file_size" of Double, parameter "file_type"
+           of String, parameter "isFolder" of String, parameter "date" of
+           String, parameter "username" of String
+        """
+        return self._client.call_method(
+            'ftp_service.search_list_files',
+            [params], self._service_ver, context)
+
     def list_files(self, params, context=None):
         """
         :param params: instance of type "listFilesInputParams" -> structure:
            parameter "token" of String, parameter "type" of String, parameter
-           "username" of String
-        :returns: instance of type "listFilesOutputPparams" -> structure:
-           parameter "files" of list of type "fileInfo" -> structure:
-           parameter "file_link" of String, parameter "file_name" of String,
-           parameter "file_size" of Double, parameter "file_type" of String,
-           parameter "isFolder" of String, parameter "date" of String,
-           parameter "username" of String
+           "search_word" of String, parameter "username" of String
+        :returns: instance of type "filepathList" -> list of String
         """
         return self._client.call_method(
             'ftp_service.list_files',

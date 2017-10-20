@@ -164,19 +164,36 @@ public class FtpServiceClient {
     }
 
     /**
+     * <p>Original spec-file function name: search_list_files</p>
+     * <pre>
+     * </pre>
+     * @param   params   instance of type {@link us.kbase.ftpservice.ListFilesInputParams ListFilesInputParams} (original type "listFilesInputParams")
+     * @return   parameter "output" of type {@link us.kbase.ftpservice.SearchListFilesOutputPparams SearchListFilesOutputPparams} (original type "searchListFilesOutputPparams")
+     * @throws IOException if an IO exception occurs
+     * @throws JsonClientException if a JSON RPC exception occurs
+     */
+    public SearchListFilesOutputPparams searchListFiles(ListFilesInputParams params, RpcContext... jsonRpcContext) throws IOException, JsonClientException {
+        List<Object> args = new ArrayList<Object>();
+        args.add(params);
+        TypeReference<List<SearchListFilesOutputPparams>> retType = new TypeReference<List<SearchListFilesOutputPparams>>() {};
+        List<SearchListFilesOutputPparams> res = caller.jsonrpcCall("ftp_service.search_list_files", args, retType, true, true, jsonRpcContext, this.serviceVersion);
+        return res.get(0);
+    }
+
+    /**
      * <p>Original spec-file function name: list_files</p>
      * <pre>
      * </pre>
      * @param   params   instance of type {@link us.kbase.ftpservice.ListFilesInputParams ListFilesInputParams} (original type "listFilesInputParams")
-     * @return   parameter "output" of type {@link us.kbase.ftpservice.ListFilesOutputPparams ListFilesOutputPparams} (original type "listFilesOutputPparams")
+     * @return   instance of original type "filepathList" &rarr; list of String
      * @throws IOException if an IO exception occurs
      * @throws JsonClientException if a JSON RPC exception occurs
      */
-    public ListFilesOutputPparams listFiles(ListFilesInputParams params, RpcContext... jsonRpcContext) throws IOException, JsonClientException {
+    public List<String> listFiles(ListFilesInputParams params, RpcContext... jsonRpcContext) throws IOException, JsonClientException {
         List<Object> args = new ArrayList<Object>();
         args.add(params);
-        TypeReference<List<ListFilesOutputPparams>> retType = new TypeReference<List<ListFilesOutputPparams>>() {};
-        List<ListFilesOutputPparams> res = caller.jsonrpcCall("ftp_service.list_files", args, retType, true, true, jsonRpcContext, this.serviceVersion);
+        TypeReference<List<List<String>>> retType = new TypeReference<List<List<String>>>() {};
+        List<List<String>> res = caller.jsonrpcCall("ftp_service.list_files", args, retType, true, true, jsonRpcContext, this.serviceVersion);
         return res.get(0);
     }
 

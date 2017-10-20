@@ -4,7 +4,7 @@ use Test::More;
 use Config::Simple;
 use Time::HiRes qw(time);
 use Bio::KBase::AuthToken;
-use Bio::KBase::workspace::Client;
+use Workspace::WorkspaceClient;
 use ftp_service::ftp_serviceImpl;
 
 local $| = 1;
@@ -13,7 +13,7 @@ my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = new Config::Simple($config_file)->get_block('ftp_service');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new Bio::KBase::workspace::Client($ws_url,token => $token);
+my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
 my $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1);
 my $ctx = LocalCallContext->new($token, $auth_token->user_id);
 $ftp_service::ftp_serviceServer::CallContext = $ctx;
@@ -23,12 +23,15 @@ my $impl = new ftp_service::ftp_serviceImpl();
 my $input_args = {
   username => 'janakakbase',
   type => '',
-  token =>
+  search_word => 'fastq',
+  #token =>'un=janakakbase|tokenid=77bd0b06-b8c8-11e6-b423-22000aef184d|expiry=1512244182|client_id=janakakbase|token_type=Bearer|SigningSubject=https://nexus.api.globusonline.org/goauth/keys/f5a9a7ea-b8b9-11e6-8d8f-22000ab80e73|sig=3d2daef913764bcdddd82c2cb140edf541ada2d6ec65cda9adea6cb881f9d1d3896b6dce687c383fb6f6908c41bc57a5d26832c3a91f804d91a20c96850f664189ae25c1a964c2212ab93e29958f28c6ce5d8854fca588df3e9eee788f2708a491f5c769d86f18fb60335a22393eb8ebcdbe2a1aeecffbc5f508fbe03ee7edab'
+  token => "TNDRXPOIFZ6RVIJIQOV4PLMXRCV6XHAG"
 };
 
 eval {
-   my $ret =$impl->list_files($input_args);
-   #my $ret =$impl->rna_sample_set($rnaSetMetaList);
+   #my $ret =$impl->list_files($input_args);
+
+   my $ret =$impl->search_list_files ($input_args);
 };
 
 =head

@@ -28,11 +28,13 @@ has 'local_headers' => (is => 'ro', isa => 'HashRef');
 our $CallContext;
 
 our %return_counts = (
+        'search_list_files' => 1,
         'list_files' => 1,
         'status' => 1,
 );
 
 our %method_authentication = (
+        'search_list_files' => 'required',
         'list_files' => 'required',
 );
 
@@ -40,6 +42,7 @@ sub _build_valid_methods
 {
     my($self) = @_;
     my $methods = {
+        'search_list_files' => 1,
         'list_files' => 1,
         'status' => 1,
     };
@@ -233,7 +236,14 @@ sub call_method {
 	    $self->exception('PerlError', "Authentication required for ftp_service but no authentication header was passed");
 	}
 
-	my $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1);
+	my $auth_token;
+        if ($self->config->{'auth-service-url'})
+        {
+            $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1, auth_svc=>$self->config->{'auth-service-url'});
+        } else {
+            $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1);
+        }
+
 	my $valid = $auth_token->validate();
 	# Only throw an exception if authentication was required and it fails
 	if ($method_auth eq 'required' && !$valid)

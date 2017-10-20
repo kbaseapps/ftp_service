@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({
     "token",
     "type",
+    "search_word",
     "username"
 })
 public class ListFilesInputParams {
@@ -29,6 +30,8 @@ public class ListFilesInputParams {
     private String token;
     @JsonProperty("type")
     private String type;
+    @JsonProperty("search_word")
+    private String searchWord;
     @JsonProperty("username")
     private String username;
     private Map<String, Object> additionalProperties = new HashMap<String, Object>();
@@ -63,6 +66,21 @@ public class ListFilesInputParams {
         return this;
     }
 
+    @JsonProperty("search_word")
+    public String getSearchWord() {
+        return searchWord;
+    }
+
+    @JsonProperty("search_word")
+    public void setSearchWord(String searchWord) {
+        this.searchWord = searchWord;
+    }
+
+    public ListFilesInputParams withSearchWord(String searchWord) {
+        this.searchWord = searchWord;
+        return this;
+    }
+
     @JsonProperty("username")
     public String getUsername() {
         return username;
@@ -90,7 +108,7 @@ public class ListFilesInputParams {
 
     @Override
     public String toString() {
-        return ((((((((("ListFilesInputParams"+" [token=")+ token)+", type=")+ type)+", username=")+ username)+", additionalProperties=")+ additionalProperties)+"]");
+        return ((((((((((("ListFilesInputParams"+" [token=")+ token)+", type=")+ type)+", searchWord=")+ searchWord)+", username=")+ username)+", additionalProperties=")+ additionalProperties)+"]");
     }
 
 }
