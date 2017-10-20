@@ -24,8 +24,7 @@ my $input_args = {
   username => 'janakakbase',
   type => '',
   search_word => 'fastq',
-  #token =>'un=janakakbase|tokenid=77bd0b06-b8c8-11e6-b423-22000aef184d|expiry=1512244182|client_id=janakakbase|token_type=Bearer|SigningSubject=https://nexus.api.globusonline.org/goauth/keys/f5a9a7ea-b8b9-11e6-8d8f-22000ab80e73|sig=3d2daef913764bcdddd82c2cb140edf541ada2d6ec65cda9adea6cb881f9d1d3896b6dce687c383fb6f6908c41bc57a5d26832c3a91f804d91a20c96850f664189ae25c1a964c2212ab93e29958f28c6ce5d8854fca588df3e9eee788f2708a491f5c769d86f18fb60335a22393eb8ebcdbe2a1aeecffbc5f508fbe03ee7edab'
-  token => "TNDRXPOIFZ6RVIJIQOV4PLMXRCV6XHAG"
+  token => "TNDXXXXX" # if you run this test script,  you need to have your own auth token pasted here
 };
 
 eval {
